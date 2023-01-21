@@ -2,10 +2,11 @@ from telebot import TeleBot
 from telebot.types import KeyboardButton, ReplyKeyboardMarkup
 import sqlite3
 from constant import get_products_query, create_new_user_query
-
+from utils import MenuStack
 TOKEN = '5901370716:AAHAdCqATJZ6WSQRUm4buzP-fivEBdkYLuU'
 
 bot = TeleBot(TOKEN, parse_mode = None)
+
 
 def main_menu_keyboard():
     """
@@ -28,7 +29,7 @@ def main_menu_keyboard():
 
     return markup
 
-
+stack = MenuStack(main_menu_keyboard())
 
 
 def get_product_names() -> list:
@@ -70,14 +71,24 @@ def menu_keyboard():
 
     return keyboard
 
-def get_user_details_keyboard():
-
+def get_user_details_keyboard(chat_id):
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    get_phone_button = KeyboardButton("Введите номер телефона ")
-    get_address_button = KeyboardButton("Введите ваш адресс")
+    phone_exist = False
+    address_exist = False
+    if not check_phone_number(chat_id):
+        get_phone_button = KeyboardButton("Введите номер телефона ")
+        markup.add(get_phone_button)
+    else:
+        phone_exist = True
 
-    markup.add(get_phone_button)
-    markup.add(get_address_button)
+    if not check_address(chat_id):
+        get_address_button = KeyboardButton("Введите ваш адресс")
+        markup.add(get_address_button)
+    else:
+        address_exist = True
+    if phone_exist and address_exist:
+        keyboard = main_menu_keyboard()
+
 
     return  markup
 
@@ -109,7 +120,7 @@ def start_handler(message):
 def menu_handler(message):
     reply = "Выберите пиццу"
     bot.reply_to(message, reply, reply_markup=menu_keyboard())
-
+    stack.push(menu_keyboard())
 
 @bot.message_handler(content_types=['text'])
 def message_handler(message):
@@ -201,7 +212,10 @@ def back_keyboard():
 
     return markup
 
-
+@bot.message_handler(func=lambda message: message.text == "Назад⬅️")
+def back_handler(message):
+    menu_to_go_back = stack.pop()
+    bot.send_message(message.chat.id, "Прошлое меню: ", reply_markup=menu_to_go_back)
 
 bot.infinity_polling()
 
