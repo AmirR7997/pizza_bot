@@ -48,6 +48,14 @@ def check_address(chat_id):
         print("Database error")
         print(e)
 
+def set_integer_flag(value, column_name, table_name):
+    sql = f"UPDATE{table_name} SET {column_name} = {value}"
+    return sql
+
+def update_user_field(chat_id, filled_name, value):
+    sql = f"UPDATE user SET{filled_name} = {value} WHERE id = {chat_id}"
+    return sql
+
 if __name__ == '__main__':
     my_stack = MenuStack()
     my_stack.push(3)
