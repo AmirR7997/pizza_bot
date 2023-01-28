@@ -18,6 +18,36 @@ class MenuStack():
     def __str__(self):
         return self.elements
 
+from constant import (get_address_sql, get_phone_number_sql)
+import sqlite3
+def check_phone_number(chat_id):
+    try:
+        sql = get_phone_number_sql(chat_id)
+        conn = sqlite3.connect("Pizza_db")
+        cursor = conn.cursor()
+
+        cursor.execute(sql)
+        if cursor.rowcount < 1:
+            return False
+        return True
+    except Exception as e:
+        print("Database error")
+        print(e)
+
+def check_address(chat_id):
+    try:
+        sql = get_address_sql(chat_id)
+        conn = sqlite3.connect("Pizza_db")
+        cursor = conn.cursor()
+
+        cursor.execute(sql)
+        if cursor.rowcount < 1:
+            return False
+        return True
+    except Exception as e:
+        print("Database error")
+        print(e)
+
 if __name__ == '__main__':
     my_stack = MenuStack()
     my_stack.push(3)

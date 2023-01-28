@@ -2,7 +2,7 @@ from telebot import TeleBot
 from telebot.types import KeyboardButton, ReplyKeyboardMarkup
 import sqlite3
 from constant import get_products_query, create_new_user_query
-from utils import MenuStack
+from utils import MenuStack, check_phone_number, check_address
 TOKEN = '5901370716:AAHAdCqATJZ6WSQRUm4buzP-fivEBdkYLuU'
 
 bot = TeleBot(TOKEN, parse_mode = None)
@@ -111,7 +111,7 @@ def start_handler(message):
     create_user(chat_id)
 
     reply = f"Welcome to the hell {message.from_user.first_name} "
-    bot.reply_to(message, reply, reply_markup=get_user_details_keyboard())
+    bot.reply_to(message, reply, reply_markup=get_user_details_keyboard(chat_id))
     print(f'Name_of_user - {message.from_user.first_name}')
     print(f'Username_of_user - @{message.from_user.username}')
     print(f'ID_user - {message.from_user.id}')
