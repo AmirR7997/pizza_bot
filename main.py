@@ -2,10 +2,10 @@ from telebot import TeleBot
 from telebot.types import KeyboardButton, ReplyKeyboardMarkup
 import sqlite3
 from constant import get_products_query, create_new_user_query
-from utils import MenuStack, check_phone_number, check_address, set_integer_flag
+from utils import MenuStack, check_phone_number, check_address,  set_integer_flag, get_integer_flag, update_user_filed
 TOKEN = '5901370716:AAHAdCqATJZ6WSQRUm4buzP-fivEBdkYLuU'
 
-bot = TeleBot(TOKEN, parse_mode = None)
+bot = TeleBot(TOKEN, parse_mode=None)
 
 
 def main_menu_keyboard():
@@ -75,17 +75,49 @@ def menu_keyboard():
 def update_phone_number(message):
     chat_id = message.chat.id
     if not check_phone_number(chat_id):
-        set_integer_flag(1, 'phone_being_entered', 'user')
+        set_integer_flag(1, 'phone_being_entered', 'user', chat_id)
         bot.send_message(chat_id, "Введите номер телефона(должен содержать только цифры): ")
 
-@bot.message_handler(func=lambda message: message.text == "Введите аддресс")
+@bot.message_handler(func=lambda message: message.text == "Введите ваш адресс")
 def update_address_number(message):
     chat_id = message.chat.id
     if not check_address(chat_id):
-        set_integer_flag(1, 'address_being_entered', 'user')
-        bot.send_message(chat_id, "Введите адресс: ")
+        set_integer_flag(1, 'address_being_entered', 'user', chat_id)
+        bot.send_message(chat_id, "Введите ваш адресс: ")
+
+@bot.message_handler(commands=["start"])
+def start_handler(message):
+    chat_id = message.chat.id
+
+    create_user(chat_id)
+
+    reply = f"Welcome to the hell {message.from_user.first_name} "
+    bot.reply_to(message, reply, reply_markup=get_user_details_keyboard(chat_id))
+    print(f'Name_of_user - {message.from_user.first_name}')
+    print(f'Username_of_user - @{message.from_user.username}')
+    print(f'ID_user - {message.from_user.id}')
 
 
+def check_phone_if_yes_update(chat_id, message):
+    if get_integer_flag(column_name='phone_being_entered',
+                        table_name='user',
+                        chat_id=chat_id) == 1:
+        if message.text.isnumeric():
+            update_user_filed(chat_id, 'phone_number', int(message.text))
+            set_integer_flag(0, 'phone_being_entered', 'user', chat_id)
+            bot.send_message(chat_id, "Номер телефона сохранён.", reply_markup=get_user_details_keyboard(chat_id))
+        else:
+            bot.send_message(chat_id, "Номер телефона должен содержать только цифры!")
+
+
+def check_address_if_yes_update(chat_id, message):
+    if get_integer_flag(column_name='address_being_entered',
+                        table_name='user',
+                        chat_id=chat_id) == 1:
+
+        update_user_filed(chat_id, 'location', message.text)
+        set_integer_flag(0, 'address_being_entered', 'user', chat_id)
+        bot.send_message(chat_id, "Адрес сохранён.", reply_markup=get_user_details_keyboard(chat_id))
 
 def get_user_details_keyboard(chat_id):
     markup = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -103,7 +135,7 @@ def get_user_details_keyboard(chat_id):
     else:
         address_exist = True
     if phone_exist and address_exist:
-        keyboard = main_menu_keyboard()
+        markup = main_menu_keyboard()
 
 
     return  markup
@@ -114,23 +146,12 @@ def create_user(chat_id):
         cursor = conn.cursor()
         sql = create_new_user_query(chat_id)
         cursor.execute(sql)
-
+        conn.commit()
     except Exception as e:
         print(e)
 
 
 
-@bot.message_handler(commands=["start"])
-def start_handler(message):
-    chat_id = message.chat.id
-
-    create_user(chat_id)
-
-    reply = f"Welcome to the hell {message.from_user.first_name} "
-    bot.reply_to(message, reply, reply_markup=get_user_details_keyboard(chat_id))
-    print(f'Name_of_user - {message.from_user.first_name}')
-    print(f'Username_of_user - @{message.from_user.username}')
-    print(f'ID_user - {message.from_user.id}')
 
 @bot.message_handler(func=lambda message: message.text == "Меню🍔")
 def menu_handler(message):
@@ -138,8 +159,18 @@ def menu_handler(message):
     bot.reply_to(message, reply, reply_markup=menu_keyboard())
     stack.push(menu_keyboard())
 
+@bot.message_handler(func = lambda message: message.text in get_product_names())
+def product_handler(message):
+    product_name = message.text
+    product_description, product_price = get_product_data(product_name)
+
 @bot.message_handler(content_types=['text'])
 def message_handler(message):
+
+    chat_id = message.chat.id
+    create_user(chat_id)
+    check_phone_if_yes_update(chat_id, message)
+    check_address_if_yes_update(chat_id, message)
 
     if message.text == "Меню🍔":
         bot.reply_to(message, 'Выбери пиццу:🍕', reply_markup=menu_keyboard())
@@ -184,7 +215,7 @@ def message_handler(message):
     if message.text == 'Контакты☎️':
         bot.reply_to(message, '- Номер телефона: +998(97)157-79-97\n- Звонок бесплатный✅', reply_markup=main_menu_keyboard())
 
-'''def menu_pizza_keyboard():
+def menu_pizza_keyboard():
     markup = ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
 
     button1 = KeyboardButton('Пеперони🍕')
@@ -200,7 +231,7 @@ def message_handler(message):
     markup.add(button7)
 
 
-    return markup'''
+    return markup
 
 def feedback_keyboard():
     markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True)
@@ -230,7 +261,8 @@ def back_keyboard():
 
 @bot.message_handler(func=lambda message: message.text == "Назад⬅️")
 def back_handler(message):
-    menu_to_go_back = stack.pop()
+    stack.pop()
+    menu_to_go_back = stack.top()
     bot.send_message(message.chat.id, "Прошлое меню: ", reply_markup=menu_to_go_back)
 
 '''WEBHOOK_HOST = '<ip/host where the bot is running>'
