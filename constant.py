@@ -36,3 +36,7 @@ def get_integer_flag_sql(column_name, table_name, chat_id):
 def update_user_filed_sql(chat_id, filed_name, value):
     sql = f"UPDATE user SET {filed_name} = '{value}' WHERE id = {chat_id}"
     return sql
+
+def get_product_data_sql(product_name):
+    sql = f"SELECT description, price from products WHERE name = '{product_name}'"
+    return sql

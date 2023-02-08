@@ -2,7 +2,9 @@ from telebot import TeleBot
 from telebot.types import KeyboardButton, ReplyKeyboardMarkup
 import sqlite3
 from constant import get_products_query, create_new_user_query
-from utils import MenuStack, check_phone_number, check_address,  set_integer_flag, get_integer_flag, update_user_filed
+from utils import MenuStack, check_phone_number, check_address, set_integer_flag, get_integer_flag, update_user_filed, \
+    get_product_data
+
 TOKEN = '5901370716:AAHAdCqATJZ6WSQRUm4buzP-fivEBdkYLuU'
 
 bot = TeleBot(TOKEN, parse_mode=None)
@@ -159,11 +161,37 @@ def menu_handler(message):
     bot.reply_to(message, reply, reply_markup=menu_keyboard())
     stack.push(menu_keyboard())
 
-@bot.message_handler(func = lambda message: message.text in get_product_names())
+
+def choose_amount_keyboard():
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
+    row1 = [KeyboardButton("1"),KeyboardButton("2"),KeyboardButton("3")]
+    row2 = [KeyboardButton("4"),KeyboardButton("5"),KeyboardButton("6")]
+    row3 = [KeyboardButton("7"),KeyboardButton("8"),KeyboardButton("9")]
+    row4 = KeyboardButton("Назад⬅️")
+
+    keyboard.add(*row1)
+    keyboard.add(*row2)
+    keyboard.add(*row3)
+    keyboard.add(row4)
+    return keyboard
+
+
+@bot.message_handler(func=lambda message: message.text in get_product_names())
 def product_handler(message):
     product_name = message.text
     product_description, product_price = get_product_data(product_name)
+    reply_message = f"*Наименование блюда:*{product_name}\n"
+    reply_message += f"*Описание:*{product_description}\n"
+    reply_message += f"*Цена:*{product_price} сум"
 
+    stack.push(choose_amount_keyboard())
+    bot.send_message(message.chat.id, reply_message, parse_mode='MARKDOWN', reply_markup=choose_amount_keyboard())
+
+@bot.message_handler(func=lambda message: message.text == "Назад⬅️")
+def back_handler(message):
+    stack.pop()
+    menu_to_go_back = stack.top()
+    bot.send_message(message.chat.id, "Прошлое меню: ", reply_markup=menu_to_go_back)
 @bot.message_handler(content_types=['text'])
 def message_handler(message):
 
@@ -218,12 +246,12 @@ def message_handler(message):
 def menu_pizza_keyboard():
     markup = ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
 
-    button1 = KeyboardButton('Пеперони🍕')
-    button2 = KeyboardButton('Маргарита🍕')
-    button3 = KeyboardButton('Гавайская🍕')
-    button4 = KeyboardButton('Комбо🍕')
-    button5 = KeyboardButton('4 сыра🍕')
-    button6 = KeyboardButton('Цыпленок ранч🍕')
+    button1 = KeyboardButton('Пеперони')
+    button2 = KeyboardButton('Маргарита')
+    button3 = KeyboardButton('Гавайская')
+    button4 = KeyboardButton('Комбо')
+    button5 = KeyboardButton('четыре сыра')
+    button6 = KeyboardButton('Цыпленок ранч')
     button7 = KeyboardButton('🔙')
 
     markup.add(button1,button2,button3)
@@ -259,11 +287,7 @@ def back_keyboard():
 
     return markup
 
-@bot.message_handler(func=lambda message: message.text == "Назад⬅️")
-def back_handler(message):
-    stack.pop()
-    menu_to_go_back = stack.top()
-    bot.send_message(message.chat.id, "Прошлое меню: ", reply_markup=menu_to_go_back)
+
 
 '''WEBHOOK_HOST = '<ip/host where the bot is running>'
 WEBHOOK_PORT = 8443  # 443, 80, 88 or 8443 (port need to be 'open')
