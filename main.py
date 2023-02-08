@@ -3,7 +3,7 @@ from telebot.types import KeyboardButton, ReplyKeyboardMarkup
 import sqlite3
 from constant import get_products_query, create_new_user_query
 from utils import MenuStack, check_phone_number, check_address, set_integer_flag, get_integer_flag, update_user_filed, \
-    get_product_data
+    get_product_data, start_getting_quantity, get_product_from_user, insert_data_to_basket
 
 TOKEN = '5901370716:AAHAdCqATJZ6WSQRUm4buzP-fivEBdkYLuU'
 
@@ -179,10 +179,12 @@ def choose_amount_keyboard():
 @bot.message_handler(func=lambda message: message.text in get_product_names())
 def product_handler(message):
     product_name = message.text
-    product_description, product_price = get_product_data(product_name)
+    product_description, product_price, id_ = get_product_data(product_name)
     reply_message = f"*Наименование блюда:*{product_name}\n"
     reply_message += f"*Описание:*{product_description}\n"
     reply_message += f"*Цена:*{product_price} сум"
+
+    start_getting_quantity(message.chat.id, product_name)
 
     stack.push(choose_amount_keyboard())
     bot.send_message(message.chat.id, reply_message, parse_mode='MARKDOWN', reply_markup=choose_amount_keyboard())
@@ -192,6 +194,24 @@ def back_handler(message):
     stack.pop()
     menu_to_go_back = stack.top()
     bot.send_message(message.chat.id, "Прошлое меню: ", reply_markup=menu_to_go_back)
+
+
+def check_for_quantity(chat_id, message):
+    is_quantity = get_integer_flag("quantity_being_entered", "user", chat_id)
+    if is_quantity == 1:
+        if message.text.isnumeric() and int(message.text) > 0:
+            product_id = get_product_from_user(chat_id)
+            amount = int(message.text)
+            insert_data_to_basket(chat_id, product_id, amount)
+            bot.send_message(chat_id, "Добавлено в корзину!")
+            stack.pop()
+            keyboard = stack.top()
+            bot.send_message(chat_id, "Хотите что то еще?", reply_markup=keyboard)
+
+        else:
+            bot.send_message(chat_id, "Количество может быть только положительным числовым значением.")
+
+
 @bot.message_handler(content_types=['text'])
 def message_handler(message):
 
@@ -199,6 +219,8 @@ def message_handler(message):
     create_user(chat_id)
     check_phone_if_yes_update(chat_id, message)
     check_address_if_yes_update(chat_id, message)
+
+    check_for_quantity(chat_id, message)
 
     if message.text == "Меню🍔":
         bot.reply_to(message, 'Выбери пиццу:🍕', reply_markup=menu_keyboard())
