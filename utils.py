@@ -25,7 +25,8 @@ class MenuStack:
 
 from constant import (get_address_sql,
                       get_phone_number_sql, set_integer_flag_sql, get_integer_flag_sql, update_user_filed_sql,
-                      get_product_data_sql, get_product_id_from_user_sql)
+                      get_product_data_sql, get_product_id_from_user_sql, get_basket_from_user,
+                      delete_product_from_basket)
 import sqlite3
 
 
@@ -132,7 +133,22 @@ def insert_data_to_basket(chat_id, product_id, amount):
     conn.commit()
 
 
+def fetch_basket_data(chat_id):
+    sql = get_basket_from_user(chat_id)
+    conn = sqlite3.connect("Pizza_db")
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    conn.commit()
 
+    basket_data = cursor.fetchall()
+    return basket_data
+
+def delete_item_from_basket(chat_id, product_name, amount):
+    sql = delete_product_from_basket(chat_id,product_name,amount)
+    conn = sqlite3.connect("Pizza_db")
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    conn.commit()
 
 if __name__ == '__main__':
     my_stack = MenuStack(9)

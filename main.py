@@ -3,7 +3,8 @@ from telebot.types import KeyboardButton, ReplyKeyboardMarkup
 import sqlite3
 from constant import get_products_query, create_new_user_query
 from utils import MenuStack, check_phone_number, check_address, set_integer_flag, get_integer_flag, update_user_filed, \
-    get_product_data, start_getting_quantity, get_product_from_user, insert_data_to_basket
+    get_product_data, start_getting_quantity, get_product_from_user, insert_data_to_basket, fetch_basket_data, \
+    delete_item_from_basket
 
 TOKEN = '5901370716:AAHAdCqATJZ6WSQRUm4buzP-fivEBdkYLuU'
 
@@ -182,7 +183,7 @@ def product_handler(message):
     product_description, product_price, id_ = get_product_data(product_name)
     reply_message = f"*Наименование блюда:*{product_name}\n"
     reply_message += f"*Описание:*{product_description}\n"
-    reply_message += f"*Цена:*{product_price} сум"
+    reply_message += f"*Цена за одну пиццу:*{product_price} сум"
 
     start_getting_quantity(message.chat.id, product_name)
 
@@ -194,7 +195,7 @@ def back_handler(message):
     stack.pop()
     menu_to_go_back = stack.top()
     bot.send_message(message.chat.id, "Прошлое меню: ", reply_markup=menu_to_go_back)
-
+    set_integer_flag(0, "quantity_being_entered", "user", message.chat.id)
 
 def check_for_quantity(chat_id, message):
     is_quantity = get_integer_flag("quantity_being_entered", "user", chat_id)
@@ -207,10 +208,49 @@ def check_for_quantity(chat_id, message):
             stack.pop()
             keyboard = stack.top()
             bot.send_message(chat_id, "Хотите что то еще?", reply_markup=keyboard)
-
+            set_integer_flag(0, "quantity_being_entered", "user", chat_id)
         else:
             bot.send_message(chat_id, "Количество может быть только положительным числовым значением.")
 
+
+def basket_keyboard(basket_data):
+
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+
+    for name, amount, price, id_ in basket_data:
+        button = KeyboardButton(f"{name} - {amount} ❌")
+        keyboard.add(button)
+
+    back_button = KeyboardButton("Назад⬅️")
+    order = KeyboardButton("Заказать")
+    keyboard.add(back_button, order)
+
+    return keyboard
+
+
+
+@bot.message_handler(func=lambda message: message.text == 'Корзина🧺')
+def basket_handler(message):
+    basket_data = fetch_basket_data(chat_id=message.chat.id)
+
+    reply_message = ""
+    total_price = 0
+    for name, amount, price, _ in basket_data:
+        reply_message += f"*{name}* - {amount} штук по {price} сум\n"
+        total_price += price * amount
+    reply_message += f"Общая сумма = *{total_price}*"
+
+    bot.send_message(message.chat.id, reply_message, parse_mode='MARKDOWN', reply_markup=basket_keyboard(basket_data))
+
+
+@bot.message_handler(func=lambda message: message.text in [f"{name} - {amount} ❌" for name, amount, price, _ in fetch_basket_data(message.chat.id)])
+def delete_product_handler(message):
+    products = [(name, amount) for name, amount, _, _ in fetch_basket_data(message.chat.id) if f"{name} - {amount} ❌" == message.text]
+    name, amount = products[0]
+    delete_item_from_basket(message.chat.id, name, amount)
+
+    basket_data = fetch_basket_data(message.chat.id)
+    bot.send_message(message.chat.id, "Продукт удалён из корзины!", reply_markup=basket_keyboard(basket_data))
 
 @bot.message_handler(content_types=['text'])
 def message_handler(message):
@@ -226,8 +266,8 @@ def message_handler(message):
         bot.reply_to(message, 'Выбери пиццу:🍕', reply_markup=menu_keyboard())
     if message.text == "Настройки⚙️":
         bot.reply_to(message, '-Пока что это:💩-', reply_markup=back_keyboard())
-    if message.text == "Корзина🧺":
-        bot.reply_to(message, '-Пока что это:💩-', reply_markup=back_keyboard())
+    """if message.text == "Корзина🧺":
+        bot.reply_to(message, '-Пока что это:💩-', reply_markup=back_keyboard())"""
     if message.text == "Доставка🚚":
         bot.reply_to(message,
                      'Если мы не успеем доставить заказ в течении 60 минут, то мы отправим вам промокод на бесплатную пиццу🎁\n\n'
