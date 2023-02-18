@@ -26,7 +26,7 @@ class MenuStack:
 from constant import (get_address_sql,
                       get_phone_number_sql, set_integer_flag_sql, get_integer_flag_sql, update_user_filed_sql,
                       get_product_data_sql, get_product_id_from_user_sql, get_basket_from_user,
-                      delete_product_from_basket)
+                      delete_product_from_basket, create_order_sql, get_order_id)
 import sqlite3
 
 
@@ -149,6 +149,35 @@ def delete_item_from_basket(chat_id, product_name, amount):
     cursor = conn.cursor()
     cursor.execute(sql)
     conn.commit()
+
+def create_order(chat_id):
+    sql = create_order_sql(chat_id)
+    conn = sqlite3.connect("Pizza_db")
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    conn.commit()
+
+
+def move_products_from_basket_to_order(chat_id):
+    basket_data = get_basket_from_user(chat_id)
+    create_order_id_sql = create_order_sql(chat_id)
+    conn = sqlite3.connect("Pizza_db")
+    cursor = conn.cursor()
+    cursor.execute(create_order_id_sql)
+    conn.commit()
+
+    order_id_sql = get_order_id(chat_id)
+    conn = sqlite3.connect("Pizza_db")
+    cursor = conn.cursor()
+    cursor.execute(order_id_sql)
+    conn.commit()
+    order_id = cursor.fetchone()[0]
+
+    sql = "INSERT INTO order_product (order_id, product_id) VALUES (? ? ?)"
+    order_products_pairs = []
+    for _, amount, _, product_id in basket_data:
+        order_products_pairs.append((order_id, product_id, amount))
+    cursor.execute(sql, order_products_pairs)
 
 if __name__ == '__main__':
     my_stack = MenuStack(9)

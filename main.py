@@ -4,7 +4,7 @@ import sqlite3
 from constant import get_products_query, create_new_user_query
 from utils import MenuStack, check_phone_number, check_address, set_integer_flag, get_integer_flag, update_user_filed, \
     get_product_data, start_getting_quantity, get_product_from_user, insert_data_to_basket, fetch_basket_data, \
-    delete_item_from_basket
+    delete_item_from_basket, create_order
 
 TOKEN = '5901370716:AAHAdCqATJZ6WSQRUm4buzP-fivEBdkYLuU'
 
@@ -296,6 +296,10 @@ def check_for_order_being_entered(message):
             location = message.location
             location = location.latitude, location.longitude
             update_user_filed(message.chat.id, "location", str(location))
+            set_integer_flag(0, "order_being_made", "user", message.chat.id)
+            create_order(message.chat.id)
+            #clear_basket(message.chat.id)
+            bot.send_message(message.chat.id, "Ваш заказ принят")
 
 @bot.message_handler(content_types=['text' , 'contact' , 'location'])
 def message_handler(message):

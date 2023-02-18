@@ -58,3 +58,11 @@ def delete_product_from_basket(chat_id, product_name, amount):
     sql = f"DELETE FROM basket WHERE basket.user_id = {chat_id} AND basket.id in ({sub_sql})"
 
     return sql
+
+def create_order_sql(chat_id):
+    sql = f"INSERT INTO 'order' (user_id) VALUES ({chat_id});"
+    return sql
+
+def get_order_id(chat_id):
+    sql = f"SELECT id from 'order' WHERE user_id = {chat_id};"
+    return sql
